@@ -26,3 +26,17 @@ type RbftTransaction interface {
 	RbftGetAccessList() AccessList
 	RbftClone() RbftTransaction
 }
+
+type QuorumCheckpoint interface {
+	Epoch() uint64
+
+	NextEpoch() uint64
+
+	GetHeight() uint64
+
+	GetStateDigest() string
+
+	Marshal() ([]byte, error)
+
+	Unmarshal(raw []byte) error
+}

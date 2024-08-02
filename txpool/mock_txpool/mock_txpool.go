@@ -766,6 +766,44 @@ func (c *MockTxPoolReceiveMissingRequestsCall[T, Constraint]) DoAndReturn(f func
 	return c
 }
 
+// ReceivePriorityTxs mocks base method.
+func (m *MockTxPool[T, Constraint]) ReceivePriorityTxs() <-chan []*T {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReceivePriorityTxs")
+	ret0, _ := ret[0].(<-chan []*T)
+	return ret0
+}
+
+// ReceivePriorityTxs indicates an expected call of ReceivePriorityTxs.
+func (mr *MockTxPoolMockRecorder[T, Constraint]) ReceivePriorityTxs() *MockTxPoolReceivePriorityTxsCall[T, Constraint] {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReceivePriorityTxs", reflect.TypeOf((*MockTxPool[T, Constraint])(nil).ReceivePriorityTxs))
+	return &MockTxPoolReceivePriorityTxsCall[T, Constraint]{Call: call}
+}
+
+// MockTxPoolReceivePriorityTxsCall wrap *gomock.Call
+type MockTxPoolReceivePriorityTxsCall[T any, Constraint types.TXConstraint[T]] struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockTxPoolReceivePriorityTxsCall[T, Constraint]) Return(arg0 <-chan []*T) *MockTxPoolReceivePriorityTxsCall[T, Constraint] {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockTxPoolReceivePriorityTxsCall[T, Constraint]) Do(f func() <-chan []*T) *MockTxPoolReceivePriorityTxsCall[T, Constraint] {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockTxPoolReceivePriorityTxsCall[T, Constraint]) DoAndReturn(f func() <-chan []*T) *MockTxPoolReceivePriorityTxsCall[T, Constraint] {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // RemoveBatches mocks base method.
 func (m *MockTxPool[T, Constraint]) RemoveBatches(batchHashList []string) {
 	m.ctrl.T.Helper()
@@ -1427,6 +1465,44 @@ func (c *MocktxPoolInfoPendingRequestsNumberIsReadyCall[T, Constraint]) Do(f fun
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MocktxPoolInfoPendingRequestsNumberIsReadyCall[T, Constraint]) DoAndReturn(f func() bool) *MocktxPoolInfoPendingRequestsNumberIsReadyCall[T, Constraint] {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ReceivePriorityTxs mocks base method.
+func (m *MocktxPoolInfo[T, Constraint]) ReceivePriorityTxs() <-chan []*T {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReceivePriorityTxs")
+	ret0, _ := ret[0].(<-chan []*T)
+	return ret0
+}
+
+// ReceivePriorityTxs indicates an expected call of ReceivePriorityTxs.
+func (mr *MocktxPoolInfoMockRecorder[T, Constraint]) ReceivePriorityTxs() *MocktxPoolInfoReceivePriorityTxsCall[T, Constraint] {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReceivePriorityTxs", reflect.TypeOf((*MocktxPoolInfo[T, Constraint])(nil).ReceivePriorityTxs))
+	return &MocktxPoolInfoReceivePriorityTxsCall[T, Constraint]{Call: call}
+}
+
+// MocktxPoolInfoReceivePriorityTxsCall wrap *gomock.Call
+type MocktxPoolInfoReceivePriorityTxsCall[T any, Constraint types.TXConstraint[T]] struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MocktxPoolInfoReceivePriorityTxsCall[T, Constraint]) Return(arg0 <-chan []*T) *MocktxPoolInfoReceivePriorityTxsCall[T, Constraint] {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MocktxPoolInfoReceivePriorityTxsCall[T, Constraint]) Do(f func() <-chan []*T) *MocktxPoolInfoReceivePriorityTxsCall[T, Constraint] {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MocktxPoolInfoReceivePriorityTxsCall[T, Constraint]) DoAndReturn(f func() <-chan []*T) *MocktxPoolInfoReceivePriorityTxsCall[T, Constraint] {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

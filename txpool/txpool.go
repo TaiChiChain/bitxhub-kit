@@ -105,4 +105,7 @@ type txPoolInfo[T any, Constraint types.TXConstraint[T]] interface {
 
 	// IsStarted check if txPool is started
 	IsStarted() bool
+
+	// ReceivePriorityTxs sends priority txs to consensus
+	ReceivePriorityTxs() <-chan []*T
 }
