@@ -91,6 +91,18 @@ var internalNodePool = sync.Pool{
 	},
 }
 
+var diffPool = sync.Pool{
+	New: func() any {
+		return &StateJournal{}
+	},
+}
+
+var childPool = sync.Pool{
+	New: func() any {
+		return &Child{}
+	},
+}
+
 var (
 	ErrorEmptyStateJournal = errors.New("decode empty state journal")
 )
@@ -149,10 +161,34 @@ func RecycleTrieNode(n Node) {
 		nn.blob = nil
 		nn.hash = common.Hash{}
 		for i := range nn.Children {
+			if nn.Children[i] == nil {
+				continue
+			}
+			nn.Children[i].Hash = common.Hash{}
+			nn.Children[i].Leaf = false
+			nn.Children[i].Version = 0
+			childPool.Put(nn.Children[i])
 			nn.Children[i] = nil
 		}
 		internalNodePool.Put(nn)
 	}
+}
+
+func RecycleStateJournal(diff *StateJournal) {
+	if diff == nil {
+		return
+	}
+	for _, trieJournal := range diff.TrieJournal {
+		for _, node := range trieJournal.DirtySet {
+			RecycleTrieNode(node)
+		}
+	}
+	diff.RootHash = nil
+	diff.SnapshotJournal = nil
+	diff.CodeJournal = nil
+	diff.TrieJournal = nil
+
+	diffPool.Put(diff)
 }
 
 // just for debug
@@ -336,11 +372,10 @@ func (n *InternalNode) unmarshalInternalFromPb(data []byte) error {
 		if len(child.Hash) == 0 {
 			continue
 		}
-		n.Children[i] = &Child{
-			Hash:    common.BytesToHash(child.Hash),
-			Version: child.Version,
-			Leaf:    child.Leaf,
-		}
+		n.Children[i] = childPool.Get().(*Child)
+		n.Children[i].Hash = common.BytesToHash(child.Hash)
+		n.Children[i].Version = child.Version
+		n.Children[i].Leaf = child.Leaf
 	}
 	return nil
 }
@@ -412,7 +447,7 @@ func UnmarshalJMTNodeFromPb(data []byte) (Node, error) {
 	}
 
 	if !helper.Leaf {
-		res := &InternalNode{}
+		res := internalNodePool.Get().(*InternalNode)
 		err = res.unmarshalInternalFromPb(helper.Content)
 		if err != nil {
 			return nil, err
@@ -520,9 +555,9 @@ func (diff *StateJournal) Encode() []byte {
 	return content
 }
 
-func (diff *StateJournal) Decode(data []byte) error {
-	if diff == nil || len(data) == 0 {
-		return ErrorEmptyStateJournal
+func DecodeStateJournal(data []byte) (*StateJournal, error) {
+	if len(data) == 0 {
+		return nil, ErrorEmptyStateJournal
 	}
 	helper := pb.StateJournalFromVTPool()
 	defer func() {
@@ -531,9 +566,10 @@ func (diff *StateJournal) Decode(data []byte) error {
 	}()
 	err := helper.UnmarshalVT(data)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	diff := diffPool.Get().(*StateJournal)
 	diff.TrieJournal = make([]*TrieJournal, len(helper.TrieJournal))
 	diff.CodeJournal = helper.CodeJournal
 	diff.SnapshotJournal = &SnapJournal{
@@ -552,7 +588,7 @@ func (diff *StateJournal) Decode(data []byte) error {
 		for k, v := range helper.TrieJournal[i].DirtySet {
 			dirtySet[k], err = UnmarshalJMTNodeFromPb(v)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 
@@ -574,7 +610,7 @@ func (diff *StateJournal) Decode(data []byte) error {
 
 	diff.RootHash = NewHash(helper.RootHash)
 
-	return nil
+	return diff, nil
 }
 
 func (h NodeKeyHeap) Len() int {
