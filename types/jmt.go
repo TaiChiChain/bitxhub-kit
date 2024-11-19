@@ -502,14 +502,14 @@ func (diff *StateJournal) Encode() []byte {
 
 	journals := make([]*pb.TrieJournal, len(diff.TrieJournal))
 	for i, journal := range diff.TrieJournal {
-		pruneSet := make(map[string][]byte)
+		var pruneSet []*pb.KV
 		for k := range journal.PruneSet {
-			pruneSet[k] = []byte{}
+			pruneSet = append(pruneSet, &pb.KV{Key: []byte(k), Val: []byte{}})
 		}
 
-		dirtySet := make(map[string][]byte)
+		var dirtySet []*pb.KV
 		for k, v := range journal.DirtySet {
-			dirtySet[k] = v.Encode()
+			dirtySet = append(dirtySet, &pb.KV{Key: []byte(k), Val: v.Encode()})
 		}
 
 		journals[i] = &pb.TrieJournal{
@@ -521,29 +521,37 @@ func (diff *StateJournal) Encode() []byte {
 		}
 	}
 
-	snapAccount := make(map[string][]byte)
-	snapStorage := make(map[string]*pb.SnapStorage)
-	snapDestruct := make(map[string][]byte)
+	snapJournal := &pb.SnapJournal{
+		Account:  []*pb.KV{},
+		Storage:  []*pb.SnapStorageKV{},
+		Destruct: []*pb.KV{},
+	}
 	for k, v := range diff.SnapshotJournal.Account {
-		snapAccount[k] = v
+		snapJournal.Account = append(snapJournal.Account, &pb.KV{Key: []byte(k), Val: v})
 	}
 	for k, v := range diff.SnapshotJournal.Storage {
-		snapStorage[k] = &pb.SnapStorage{SnapStorage: v}
+		snapStorage := &pb.SnapStorage{
+			SnapStorage: []*pb.KV{},
+		}
+		for innerK, innerV := range v {
+			snapStorage.SnapStorage = append(snapStorage.SnapStorage, &pb.KV{Key: []byte(innerK), Val: innerV})
+		}
+		snapJournal.Storage = append(snapJournal.Storage, &pb.SnapStorageKV{Key: []byte(k), SnapStorage: snapStorage})
+
 	}
 	for k := range diff.SnapshotJournal.Destruct {
-		snapDestruct[k] = []byte{}
+		snapJournal.Destruct = append(snapJournal.Destruct, &pb.KV{Key: []byte(k), Val: []byte{}})
 	}
 
-	snapJournal := &pb.SnapJournal{
-		Account:  snapAccount,
-		Storage:  snapStorage,
-		Destruct: snapDestruct,
+	var codeJournal []*pb.KV
+	for k, v := range diff.CodeJournal {
+		codeJournal = append(codeJournal, &pb.KV{Key: []byte(k), Val: v})
 	}
 
 	blob := &pb.StateJournal{
 		RootHash:    diff.RootHash.Bytes(),
 		TrieJournal: journals,
-		CodeJournal: diff.CodeJournal,
+		CodeJournal: codeJournal,
 		SnapJournal: snapJournal,
 	}
 
@@ -571,22 +579,25 @@ func DecodeStateJournal(data []byte) (*StateJournal, error) {
 
 	diff := diffPool.Get().(*StateJournal)
 	diff.TrieJournal = make([]*TrieJournal, len(helper.TrieJournal))
-	diff.CodeJournal = helper.CodeJournal
+	diff.CodeJournal = make(map[string][]byte)
+	for _, kv := range helper.CodeJournal {
+		diff.CodeJournal[string(kv.Key)] = kv.Val
+	}
 	diff.SnapshotJournal = &SnapJournal{
-		Account:  helper.SnapJournal.Account,
+		Account:  make(map[string][]byte),
 		Storage:  make(map[string]map[string][]byte),
 		Destruct: make(map[string]struct{}),
 	}
 
 	for i := 0; i < len(helper.TrieJournal); i++ {
 		pruneSet := make(map[string]struct{})
-		for k := range helper.TrieJournal[i].PruneSet {
-			pruneSet[k] = struct{}{}
+		for _, kv := range helper.TrieJournal[i].PruneSet {
+			pruneSet[string(kv.Key)] = struct{}{}
 		}
 
 		dirtySet := make(map[string]Node)
-		for k, v := range helper.TrieJournal[i].DirtySet {
-			dirtySet[k], err = UnmarshalJMTNodeFromPb(v)
+		for _, kv := range helper.TrieJournal[i].DirtySet {
+			dirtySet[string(kv.Key)], err = UnmarshalJMTNodeFromPb(kv.Val)
 			if err != nil {
 				return nil, err
 			}
@@ -601,11 +612,18 @@ func DecodeStateJournal(data []byte) (*StateJournal, error) {
 		}
 	}
 
-	for k := range helper.SnapJournal.Destruct {
-		diff.SnapshotJournal.Destruct[k] = struct{}{}
+	for _, kv := range helper.SnapJournal.Account {
+		diff.SnapshotJournal.Account[string(kv.Key)] = kv.Val
 	}
-	for k, v := range helper.SnapJournal.Storage {
-		diff.SnapshotJournal.Storage[k] = v.SnapStorage
+	for _, kv := range helper.SnapJournal.Destruct {
+		diff.SnapshotJournal.Destruct[string(kv.Key)] = struct{}{}
+	}
+	for _, kv := range helper.SnapJournal.Storage {
+		snapStorage := make(map[string][]byte)
+		for _, innerKV := range kv.SnapStorage.SnapStorage {
+			snapStorage[string(innerKV.Key)] = innerKV.Val
+		}
+		diff.SnapshotJournal.Storage[string(kv.Key)] = snapStorage
 	}
 
 	diff.RootHash = NewHash(helper.RootHash)
